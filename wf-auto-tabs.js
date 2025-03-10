@@ -1,3 +1,6 @@
+// This code was taken from https://www.flowbase.co/booster/webflow-auto-tab-rotation and modified for personalized funcitonality.
+// All functionality was created by Flowbase, I only created the fade out of the progress bar.
+
 (function () {
   "use strict";
 
@@ -93,6 +96,7 @@
   };
 
   const progressVar = "--fb-tab-progress";
+  const progressOpacityVar = "--fb-tab-progress-opacity";
 
   // Timer class
   class Timer {
@@ -166,6 +170,15 @@
       const tabs = Array.from(element.querySelectorAll(".w-tab-link"));
       if (!tabs.length) return this.log("Required attribute is missing");
 
+      // Add CSS for progress bar transitions
+      const style = document.createElement("style");
+      style.textContent = `
+        .tab-progress-bar {
+          transition: opacity 0.3s ease;
+        }
+      `;
+      document.head.appendChild(style);
+
       const speed = dataStore.get("fb-tabs-speed");
       const showProgress = dataStore.get("fb-tabs-progress");
       let currentTab = tabs.find((tab) => tab.classList.contains("w--current"));
@@ -185,15 +198,31 @@
         speed,
         showProgress
           ? (progress) =>
-              requestAnimationFrame(() =>
-                currentTab?.style.setProperty(progressVar, `${progress}%`)
-              )
+              requestAnimationFrame(() => {
+                if (currentTab) {
+                  const progressBar =
+                    currentTab.querySelector(".tab-progress-bar");
+                  if (progressBar) {
+                    progressBar.style.width = `${progress}%`;
+                    progressBar.style.opacity = "1";
+                  }
+                }
+              })
           : undefined
       );
 
       const activateTab = (tab) => {
         if (tab !== currentTab) {
-          if (showProgress) currentTab?.style.removeProperty(progressVar);
+          if (showProgress && currentTab) {
+            const progressBar = currentTab.querySelector(".tab-progress-bar");
+            if (progressBar) {
+              progressBar.style.opacity = "0";
+              // Reset width after fade out
+              setTimeout(() => {
+                progressBar.style.width = "0";
+              }, 400);
+            }
+          }
           currentTab = tab;
         }
         timer.reset();
