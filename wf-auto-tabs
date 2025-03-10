@@ -1,0 +1,241 @@
+(function () {
+  "use strict";
+
+  // Data storage class
+  class DataStore {
+    constructor() {
+      this.data = {};
+    }
+    set(key, value) {
+      this.data[key] = value;
+    }
+    get(key) {
+      return this.data[key];
+    }
+  }
+
+  // Booster class for managing attributes and validation
+  class Booster {
+    constructor(options) {
+      this.options = options;
+    }
+
+    log(message, details) {
+      const logMessage = [
+        `%c[${this.options.title}] ${message}. Link to documentation: ${this.options.documentationLink}`,
+        "display: inline-block; padding: 4px 6px; border-radius: 4px; line-height: 1.5em; color: #282735; background: linear-gradient(45deg, rgba(185, 205, 255, 0.4) 0%, rgba(201, 182, 255, 0.4) 33%, rgba(239, 184, 255, 0.4) 66%, rgba(255, 210, 177, 0.4) 100%);",
+      ];
+      if (details) {
+        console.group(...logMessage);
+        Array.isArray(details) ? console.log(...details) : console.log(details);
+        console.groupEnd();
+      } else {
+        console.log(...logMessage);
+      }
+    }
+
+    validate(attribute, name, value) {
+      if (!attribute.validate) return true;
+
+      if (typeof attribute.validate === "function") {
+        if (!attribute.validate(value)) {
+          this.log(`Invalid value "${value}" for attribute "${name}"`);
+          return false;
+        }
+      } else if (!attribute.validate.includes(value)) {
+        this.log(`Invalid value "${value}" for attribute "${name}"`, [
+          "%cPossible values:%c\n" +
+            attribute.validate.map((v) => `• ${v}`).join("\n"),
+          "font-weight: 700;",
+          "font-weight: initial;",
+        ]);
+        return false;
+      }
+      return true;
+    }
+
+    parse(element) {
+      const dataStore = new DataStore();
+      for (const key in this.options.attributes) {
+        const attribute = this.options.attributes[key];
+        const value = element.getAttribute(key);
+        if (!value) {
+          dataStore.set(key, attribute.defaultValue);
+          continue;
+        }
+        if (!this.validate(attribute, key, value)) continue;
+        let parsedValue = value;
+        if (attribute.parse) {
+          parsedValue = attribute.parse(value) ?? attribute.defaultValue;
+        }
+        dataStore.set(key, parsedValue);
+      }
+      this.options.apply.call(this, element, dataStore);
+    }
+
+    getElements() {
+      return document.querySelectorAll(`[${this.options.name}]`);
+    }
+
+    init() {
+      this.getElements().forEach((element) => this.parse(element));
+    }
+  }
+
+  // Utility functions
+  const parse = {
+    stringToBoolean: (value) => value !== "false",
+  };
+
+  const validation = {
+    isBoolean: (value) => /^(true|false)$/.test(value),
+    isNumber: (value) => !isNaN(Number(value)),
+  };
+
+  const progressVar = "--fb-tab-progress";
+
+  // Timer class
+  class Timer {
+    constructor(callback, delay, tick) {
+      this.cb = callback;
+      this.delay = delay;
+      this.tick = tick;
+      this.remaining = delay;
+      this.start = 0;
+    }
+
+    clear() {
+      clearInterval(this.intervalId);
+      clearTimeout(this.timerId);
+      this.intervalId = undefined;
+      this.timerId = undefined;
+    }
+
+    reset() {
+      this.clear();
+      this.remaining = this.delay;
+      this.start = 0;
+    }
+
+    pause() {
+      if (this.start) {
+        this.remaining -= Date.now() - this.start;
+        this.start = 0;
+        this.clear();
+      }
+    }
+
+    resume() {
+      if (!this.timerId) {
+        this.timerId = setTimeout(() => this.cb(), this.remaining);
+        if (this.tick) {
+          this.start = Date.now();
+          this.intervalId = setInterval(() => {
+            const elapsedTime = this.start + this.remaining - Date.now();
+            const progress = Math.ceil(
+              (100 * (this.delay - elapsedTime)) / this.delay
+            );
+            this.tick(progress);
+          }, 1);
+        }
+      }
+    }
+  }
+
+  // Auto Tab Rotation Booster
+  const autoTabBooster = new Booster({
+    name: "fb-tabs",
+    attributes: {
+      "fb-tabs-pauseable": {
+        defaultValue: false,
+        validate: validation.isBoolean,
+        parse: parse.stringToBoolean,
+      },
+      "fb-tabs-progress": {
+        defaultValue: false,
+        validate: validation.isBoolean,
+        parse: parse.stringToBoolean,
+      },
+      "fb-tabs-speed": {
+        defaultValue: 5000,
+        validate: validation.isNumber,
+        parse: Number,
+      },
+    },
+    apply(element, dataStore) {
+      const tabs = Array.from(element.querySelectorAll(".w-tab-link"));
+      if (!tabs.length) return this.log("Required attribute is missing");
+
+      const speed = dataStore.get("fb-tabs-speed");
+      const showProgress = dataStore.get("fb-tabs-progress");
+      let currentTab = tabs.find((tab) => tab.classList.contains("w--current"));
+
+      const timer = new Timer(
+        () => {
+          if (!currentTab) return;
+          let nextIndex = tabs.indexOf(currentTab) + 1;
+          if (nextIndex >= tabs.length) nextIndex = 0;
+          const nextTab = tabs[nextIndex];
+          const href = nextTab.href;
+          nextTab.removeAttribute("href");
+          nextTab.click();
+          currentTab = nextTab;
+          if (href) nextTab.href = href;
+        },
+        speed,
+        showProgress
+          ? (progress) =>
+              requestAnimationFrame(() =>
+                currentTab?.style.setProperty(progressVar, `${progress}%`)
+              )
+          : undefined
+      );
+
+      const activateTab = (tab) => {
+        if (tab !== currentTab) {
+          if (showProgress) currentTab?.style.removeProperty(progressVar);
+          currentTab = tab;
+        }
+        timer.reset();
+        timer.resume();
+      };
+
+      tabs.forEach((tab) => {
+        tab.addEventListener(
+          "click",
+          (event) => {
+            if (!event.isTrusted) event.stopPropagation();
+            activateTab(tab);
+          },
+          { passive: true }
+        );
+        tab.addEventListener(
+          "focus",
+          () => {
+            if (tab !== currentTab) activateTab(tab);
+          },
+          { passive: true }
+        );
+      });
+
+      if (dataStore.get("fb-tabs-pauseable")) {
+        element.addEventListener("mouseenter", () => timer.pause(), {
+          passive: true,
+        });
+        element.addEventListener("mouseleave", () => timer.resume(), {
+          passive: true,
+        });
+      }
+
+      if (currentTab) timer.resume();
+    },
+    title: "Auto Tab Rotation Booster",
+    documentationLink:
+      "https://www.flowbase.co/booster/webflow-auto-tab-rotation",
+  });
+
+  const init = () => autoTabBooster.init();
+  document.readyState === "complete"
+    ? init()
+    : window.addEventListener("load", init);
+})();
