@@ -1,6 +1,3 @@
-// This code was taken from https://www.flowbase.co/booster/webflow-auto-tab-rotation and modified for personalized funcitonality.
-// All functionality was created by Flowbase, I only created the fade out of the progress bar.
-
 (function () {
   "use strict";
 
@@ -39,7 +36,6 @@
 
     validate(attribute, name, value) {
       if (!attribute.validate) return true;
-
       if (typeof attribute.validate === "function") {
         if (!attribute.validate(value)) {
           this.log(`Invalid value "${value}" for attribute "${name}"`);
@@ -98,7 +94,7 @@
   const progressVar = "--fb-tab-progress";
   const progressOpacityVar = "--fb-tab-progress-opacity";
 
-  // Timer class
+  // Timer class with smooth progress update
   class Timer {
     constructor(callback, delay, tick) {
       this.cb = callback;
@@ -109,9 +105,7 @@
     }
 
     clear() {
-      clearInterval(this.intervalId);
       clearTimeout(this.timerId);
-      this.intervalId = undefined;
       this.timerId = undefined;
     }
 
@@ -134,15 +128,26 @@
         this.timerId = setTimeout(() => this.cb(), this.remaining);
         if (this.tick) {
           this.start = Date.now();
-          this.intervalId = setInterval(() => {
-            const elapsedTime = this.start + this.remaining - Date.now();
-            const progress = Math.ceil(
-              (100 * (this.delay - elapsedTime)) / this.delay
-            );
-            this.tick(progress);
-          }, 1);
+          requestAnimationFrame(() => this.tick(0));
+          this.runProgressAnimation();
         }
       }
+    }
+
+    runProgressAnimation() {
+      let start;
+      const animate = (timestamp) => {
+        if (!start) start = timestamp;
+        const elapsed = timestamp - start;
+        const progress = Math.min(elapsed / this.delay, 1) * 100;
+
+        if (this.tick) this.tick(progress);
+
+        if (elapsed < this.delay) {
+          requestAnimationFrame(animate);
+        }
+      };
+      requestAnimationFrame(animate);
     }
   }
 
@@ -170,11 +175,11 @@
       const tabs = Array.from(element.querySelectorAll(".w-tab-link"));
       if (!tabs.length) return this.log("Required attribute is missing");
 
-      // Add CSS for progress bar transitions
+      // Add CSS for smooth progress bar animations
       const style = document.createElement("style");
       style.textContent = `
         .tab-progress-bar {
-          transition: opacity 0.3s ease;
+          transition: width linear, opacity 0.3s ease;
         }
       `;
       document.head.appendChild(style);
@@ -217,7 +222,6 @@
             const progressBar = currentTab.querySelector(".tab-progress-bar");
             if (progressBar) {
               progressBar.style.opacity = "0";
-              // Reset width after fade out
               setTimeout(() => {
                 progressBar.style.width = "0";
               }, 400);
