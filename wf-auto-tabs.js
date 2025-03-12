@@ -1,3 +1,59 @@
+/**
+ * Webflow Auto Tab Rotation
+ * ------------------------
+ * This script enables automatic rotation of Webflow tabs with configurable options
+ * for speed, pause on hover, and progress indicators.
+ *
+ * Required HTML Structure:
+ * ----------------------
+ * <div fb-tabs [fb-tabs-pauseable] [fb-tabs-progress] [fb-tabs-speed]>
+ *   <!-- Standard Webflow Tabs Component structure -->
+ *   <div class="w-tab-menu">
+ *     <a class="w-tab-link w--current">Tab 1</a>
+ *     <a class="w-tab-link">Tab 2</a>
+ *     <!-- ... more tabs ... -->
+ *   </div>
+ *   <div class="w-tab-content">
+ *     <!-- Tab content panes -->
+ *   </div>
+ * </div>
+ *
+ * Available Attributes:
+ * -------------------
+ * 1. fb-tabs (required)
+ *    - Main attribute to initialize the auto tab rotation
+ *
+ * 2. fb-tabs-pauseable (optional)
+ *    - Type: boolean ("true" or "false")
+ *    - Default: false
+ *    - When set to "true", tabs will pause rotation on hover
+ *
+ * 3. fb-tabs-progress (optional)
+ *    - Type: boolean ("true" or "false")
+ *    - Default: false
+ *    - When set to "true", shows a progress bar for each tab
+ *
+ * 4. fb-tabs-speed (optional)
+ *    - Type: number (milliseconds)
+ *    - Default: 5000 (5 seconds)
+ *    - Controls the rotation speed between tabs
+ *
+ * Example Usage:
+ * -------------
+ * <!-- Basic auto-rotating tabs -->
+ * <div fb-tabs>
+ *   <!-- Webflow tabs structure -->
+ * </div>
+ *
+ * <!-- Advanced configuration -->
+ * <div fb-tabs
+ *      fb-tabs-pauseable="true"
+ *      fb-tabs-progress="true"
+ *      fb-tabs-speed="3000">
+ *   <!-- Webflow tabs structure -->
+ * </div>
+ */
+
 (function () {
   "use strict";
 
