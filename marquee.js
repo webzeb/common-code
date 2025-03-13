@@ -1,6 +1,7 @@
 /**
  * Infinite Marquee Scroll
  *
+ * This code requires GSAP core.
  * HTML Structure Requirements:
  * @example
  * <div data-gsap-marquee="marquee" data-marquee-duration="6" class="marquee">

@@ -1,5 +1,7 @@
 // Link Hover Dot Animation
 //
+// This code requires GSAP core.
+//
 // Required HTML Structure:
 // <a data-gsap="nav-link" href="#">
 //   <div data-gsap="active-dot"></div>
